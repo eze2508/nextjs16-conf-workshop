@@ -1,6 +1,6 @@
 import {faker} from "@faker-js/faker";
-
 import {delay} from "./utils";
+import {cacheTag} from "next/cache";
 
 export type Category = ReturnType<typeof generateData>["categories"][number];
 
@@ -106,17 +106,41 @@ export async function getFeaturedBlogPosts(category?: string): Promise<BlogPost[
 }
 
 export async function getCategories(): Promise<Category[]> {
+  "use cache";
+
+  cacheTag("categories");
+  
   console.info("[API] Fetching categories (250ms delay)");
 
   await delay(250);
 
-  return CATEGORIES;
+  const id = faker.string.uuid();
+
+  // Return all categories, prepending an "All" category to the beginning of the array.
+  return [
+    {
+      id,
+      name: `falopa (${id})`,
+      slug: "all",
+      description: "All categories",
+      postCount: 0,
+    },
+    ...CATEGORIES,
+  ];
 }
 
 export async function getBlogPostBySlug(slug: string): Promise<BlogPost | null> {
+  "use cache";
+
   console.info(`[API] Fetching blog post with slug: ${slug} (250ms delay)`);
 
   await delay(250);
 
-  return BLOG_POSTS.find((post) => post.slug === slug) ?? null;
+  const post = BLOG_POSTS.find((post) => post.slug === slug) ?? null;
+
+  if (post) {
+    cacheTag(`blog-post-${post.id}`);
+  }
+
+  return post;
 }
